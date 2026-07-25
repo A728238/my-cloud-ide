@@ -3,101 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serverless Multi-Language IDE v3</title>
-    <!-- Tailwind CSS (cdnjs) -->
-    <link rel="stylesheet" href="https://cloudflare.com">
+    <title>Pure Self-Made Cloud IDE</title>
+    <style>
+        /* 外部CSS（Tailwind等）に依存せず、すべて標準CSSでスタイリング */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #111827; color: #f9fafb; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* ツールバー */
+        header { background-color: #1f2937; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-b: 1px solid #374151; }
+        .logo { font-size: 1.1rem; font-weight: bold; color: #34d399; }
+        select { background-color: #4b5563; color: white; padding: 6px 12px; border-radius: 4px; border: 1px solid #4b5563; font-weight: bold; font-size: 0.9rem; }
+        button { background-color: #059669; color: white; padding: 8px 18px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+        button:active { transform: scale(0.95); }
+
+        /* メインエリア */
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        @media (min-width: 768px) { main { flex-direction: row; } }
+
+        /* 自作エディタ部分 */
+        .editor-wrapper { width: 100%; height: 65%; position: relative; border-bottom: 1px solid #374151; }
+        @media (min-width: 768px) { .editor-wrapper { width: 65%; height: 100%; border-bottom: none; border-right: 1px solid #374151; } }
+        
+        /* モバイル入力に最適化したテキストエリア */
+        #code-editor {
+            width: 100%; height: 100%; background-color: #1f2937; color: #f3f4f6;
+            font-family: 'Courier New', Courier, monospace; font-size: 16px; padding: 12px;
+            border: none; resize: none; outline: none; line-height: 1.5;
+            white-space: pre; overflow: auto;
+        }
+
+        /* コンソール出力部分 */
+        .console-wrapper { width: 100%; height: 35%; background-color: #030712; display: flex; flex-direction: column; }
+        @media (min-width: 768px) { .console-wrapper { width: 35%; height: 100%; } }
+        .console-title { background-color: #111827; padding: 6px 12px; font-size: 0.75rem; color: #9ca3af; font-family: monospace; border-bottom: 1px solid #1f2937; }
+        #console-output { flex: 1; padding: 12px; font-family: monospace; font-size: 0.85rem; color: #6ee7b7; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white flex flex-col h-screen select-none">
+<body>
 
     <!-- ツールバー -->
-    <header class="bg-gray-800 p-3 flex flex-wrap gap-3 items-center justify-between border-b border-gray-700">
-        <div class="flex items-center gap-3">
-            <span class="text-xl font-bold text-green-400">🦕 Cloud IDE</span>
-            <select id="lang-select" class="bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-semibold border border-gray-600 focus:outline-none">
+    <header>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="logo">🦕 Cloud IDE</span>
+            <select id="lang-select">
                 <option value="typescript">TypeScript (Deno)</option>
                 <option value="csharp">C# (.NET)</option>
                 <option value="python">Python 3</option>
             </select>
         </div>
-        <button id="run-btn" class="bg-green-600 hover:bg-green-500 active:scale-95 px-6 py-2 rounded text-sm font-bold transition shadow-lg">
-            ▶ 実行
-        </button>
+        <button id="run-btn">▶ 実行</button>
     </header>
 
     <!-- メイン領域 -->
-    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div id="editor-container" class="w-full h-2/3 md:h-full md:w-2/3 border-b md:border-b-0 md:border-r border-gray-700"></div>
-        <div class="w-full h-1/3 md:h-full md:w-1/3 flex flex-col bg-gray-950">
-            <div class="bg-gray-900 px-3 py-1.5 text-xs text-gray-400 font-mono border-b border-gray-800 tracking-wider">CONSOLE OUTPUT</div>
-            <pre id="console-output" class="p-3 font-mono text-sm overflow-y-auto flex-1 text-green-300 whitespace-pre-wrap select-text">⏳ エディタを初期化中...</pre>
+    <main>
+        <!-- 自作テキストエディタ -->
+        <div class="editor-wrapper">
+            <textarea id="code-editor" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+        </div>
+        
+        <!-- コンソール出力 -->
+        <div class="console-wrapper">
+            <div class="console-title">CONSOLE OUTPUT</div>
+            <pre id="console-output">✨ 自作エディタ起動完了！\nコードを入力して「▶ 実行」を押してください。</pre>
         </div>
     </main>
 
-    <!-- 外部jsファイルを使わず、HTML内に直接ローダーを注入する -->
     <script>
-        // 簡易的なインラインAMDローダーの自作定義（requireを完全自給自足する）
-        const cdnBase = 'https://cloudflare.com';
-        window.require = { paths: { vs: cdnBase } };
-        
-        function loadScript(url) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = url;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
+        const editor = document.getElementById('code-editor');
+        const consoleElem = document.getElementById('console-output');
 
-        let editor;
         const templates = {
-            typescript: `// TypeScript (Deno) の実行テスト\nconst message: string = "Hello from Deno Cloud IDE!";\nconsole.log(message);\n\nconst res = await fetch("https://github.com");\nconsole.log("GitHub API Status:", res.status);`,
+            typescript: `// TypeScript (Deno) の実行テスト\nconst message: string = "Hello from Deno Pure IDE!";\nconsole.log(message);\n\nconst res = await fetch("https://github.com");\nconsole.log("GitHub API Status:", res.status);`,
             csharp: `using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello from C#!");\n    }\n}`,
             python: `# Python 3 の実行テスト\nprint("Hello from Python!")`
         };
 
-        // 完全に独立したエディタ起動メイン処理
-        async function initEditor() {
-            const consoleElem = document.getElementById('console-output');
-            try {
-                // 1. 本体読み込み用のローダーを動的に注入
-                await loadScript(`${cdnBase}/loader.min.js`);
-                
-                // 2. Monaco Editor本体とメイン環境の読み込み
-                require(['vs/editor/editor.main'], function () {
-                    editor = monaco.editor.create(document.getElementById('editor-container'), {
-                        value: templates.typescript,
-                        language: 'typescript',
-                        theme: 'vs-dark',
-                        fontSize: 16,
-                        automaticLayout: true,
-                        wordWrap: "on",
-                        minimap: { enabled: false }
-                    });
-                    consoleElem.innerText = "✨ エディタの準備が完了しました。\nコードを書いて「▶ 実行」を押してください。";
-                });
-            } catch (err) {
-                consoleElem.innerText = `❌ 通信エラー: Monaco Editorの読み込みに失敗しました。\n接続環境（Wi-Fi制限など）を確認してください。`;
-            }
-        }
+        // 初期コードのセット
+        editor.value = templates.typescript;
 
-        // 起動
-        window.addEventListener('DOMContentLoaded', initEditor);
-
-        // 言語切り替え
+        // 言語切り替え処理
         document.getElementById('lang-select').addEventListener('change', (e) => {
-            if (!editor) return;
             const lang = e.target.value;
-            monaco.editor.setModelLanguage(editor.getModel(), lang === 'csharp' ? 'csharp' : lang);
-            editor.setValue(templates[lang]);
+            editor.value = templates[lang];
         });
 
-        // 実行処理
+        // 📱 モバイルコーディング快適化：Tabキーによるインデントを自作サポート
+        editor.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+
+                // 2文字のスペースをインデントとして挿入
+                this.value = this.value.substring(0, start) + "  " + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 2;
+            }
+        });
+
+        // コード実行メイン処理
         document.getElementById('run-btn').addEventListener('click', async () => {
-            if (!editor) return;
-            const code = editor.getValue();
+            const code = editor.value;
             const lang = document.getElementById('lang-select').value;
-            const consoleElem = document.getElementById('console-output');
             
             consoleElem.innerText = "⏳ 実行環境に接続中...\n";
 
@@ -127,7 +133,7 @@
                     consoleElem.innerText = data.stdout || data.stderr || data.error || "（出力なし）";
                 }
             } catch (e) {
-                consoleElem.innerText = `❌ 通信エラー: 実行環境に接続できませんでした。\n${e.message}`;
+                consoleElem.innerText = `❌ 通信エラー: 実行環境への送信に失敗しました。\n機内モードやネットワーク制限を確認してください。\n詳細: ${e.message}`;
             }
         });
     </script>
