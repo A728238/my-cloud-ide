@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serverless Multi-Language IDE v2</title>
+    <title>Serverless Multi-Language IDE v3</title>
     <!-- Tailwind CSS (cdnjs) -->
     <link rel="stylesheet" href="https://cloudflare.com">
-    <!-- Monaco Editor ローダー (cdnjs) -->
-    <script src="https://cloudflare.com"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col h-screen select-none">
 
@@ -31,35 +29,41 @@
         <div id="editor-container" class="w-full h-2/3 md:h-full md:w-2/3 border-b md:border-b-0 md:border-r border-gray-700"></div>
         <div class="w-full h-1/3 md:h-full md:w-1/3 flex flex-col bg-gray-950">
             <div class="bg-gray-900 px-3 py-1.5 text-xs text-gray-400 font-mono border-b border-gray-800 tracking-wider">CONSOLE OUTPUT</div>
-            <pre id="console-output" class="p-3 font-mono text-sm overflow-y-auto flex-1 text-green-300 whitespace-pre-wrap select-text">⏳ エディタを読み込み中...</pre>
+            <pre id="console-output" class="p-3 font-mono text-sm overflow-y-auto flex-1 text-green-300 whitespace-pre-wrap select-text">⏳ エディタを初期化中...</pre>
         </div>
     </main>
 
+    <!-- 外部jsファイルを使わず、HTML内に直接ローダーを注入する -->
     <script>
-        let editor;
+        // 簡易的なインラインAMDローダーの自作定義（requireを完全自給自足する）
+        const cdnBase = 'https://cloudflare.com';
+        window.require = { paths: { vs: cdnBase } };
+        
+        function loadScript(url) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
 
+        let editor;
         const templates = {
             typescript: `// TypeScript (Deno) の実行テスト\nconst message: string = "Hello from Deno Cloud IDE!";\nconsole.log(message);\n\nconst res = await fetch("https://github.com");\nconsole.log("GitHub API Status:", res.status);`,
             csharp: `using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello from C#!");\n    }\n}`,
             python: `# Python 3 の実行テスト\nprint("Hello from Python!")`
         };
 
-        // require が準備できるまでループで監視する安全な起動関数
-        function startEditorWithRetry() {
+        // 完全に独立したエディタ起動メイン処理
+        async function initEditor() {
             const consoleElem = document.getElementById('console-output');
-
-            // 1. require がまだ定義されていない場合は、1秒後に再挑戦
-            if (typeof require === 'undefined') {
-                consoleElem.innerText = "⏳ 外部ライブラリの読み込みを待機中 (リトライします)...";
-                setTimeout(startEditorWithRetry, 1000);
-                return;
-            }
-
-            // 2. require が無事に見つかったらエディタを初期化
-            consoleElem.innerText = "✨ エディタの準備が完了しました。";
-            
             try {
-                require.config({ paths: { vs: 'https://cloudflare.com' } });
+                // 1. 本体読み込み用のローダーを動的に注入
+                await loadScript(`${cdnBase}/loader.min.js`);
+                
+                // 2. Monaco Editor本体とメイン環境の読み込み
                 require(['vs/editor/editor.main'], function () {
                     editor = monaco.editor.create(document.getElementById('editor-container'), {
                         value: templates.typescript,
@@ -70,14 +74,15 @@
                         wordWrap: "on",
                         minimap: { enabled: false }
                     });
+                    consoleElem.innerText = "✨ エディタの準備が完了しました。\nコードを書いて「▶ 実行」を押してください。";
                 });
             } catch (err) {
-                consoleElem.innerText = `❌ 初期化エラー: ${err.message}`;
+                consoleElem.innerText = `❌ 通信エラー: Monaco Editorの読み込みに失敗しました。\n接続環境（Wi-Fi制限など）を確認してください。`;
             }
         }
 
-        // 読み込み開始
-        startEditorWithRetry();
+        // 起動
+        window.addEventListener('DOMContentLoaded', initEditor);
 
         // 言語切り替え
         document.getElementById('lang-select').addEventListener('change', (e) => {
