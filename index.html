@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
 
-  <!-- Service Workerの過去の残骸を強制的に登録解除 -->
+  <!-- Service Workerの残骸を強制解除 -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -13,8 +13,7 @@
     }
   </script>
 
-  <!-- 安定した cdnjs (Cloudflare) からCSSをロード -->
-  <link rel="stylesheet" href="https://cloudflare.com" />
+  <!-- スタイルシートの定義 -->
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
 
@@ -25,85 +24,84 @@
     .main-container { display: flex; flex: 1; height: calc(100vh - 40px); }
     .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
     
-    /* 【超重要】ターミナルのサイズが潰れるのを防ぐため、明示的に100%の高さと横幅を強制固定 */
+    /* ターミナルを自作のCSSスタイルで完全再現（xterm.cssへの依存も排除） */
     .terminal-container { 
       flex: 1; 
       padding: 15px; 
       background: #000000 !important; 
-      height: 100% !important;
-      width: 100% !important;
+      color: #ffffff !important;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 16px;
+      line-height: 1.4;
+      overflow-y: auto;
       box-sizing: border-box;
+      white-space: pre-wrap;
     }
     .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
-    
-    /* xterm内部の文字が潰れるバグをCSSで強制的に上書き修正 */
-    .xterm .xterm-screen {
-      display: block !important;
-    }
+    .cursor { display: inline-block; width: 8px; height: 18px; background: #fff; animation: blink 1s infinite; vertical-align: middle; }
+    @keyframes blink { 0%, 49% { background: #fff; } 50%, 100% { background: transparent; } }
+    .line { margin-bottom: 4px; }
+    .green { color: #00ff00; font-weight: bold; }
   </style>
 
-  <!-- エラーの起きない通常のスクリプト形式 -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
+  <!-- エディタ用の最小限のスクリプト（こちらは正常に動いているため残します） -->
   <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
   <div id="app">
-    <div class="header">自作 Web IDE 起動テスト（スタイル強制版）</div>
+    <div class="header">自作 Web IDE 起動テスト（完全インライン描画版）</div>
     <div class="main-container">
       <div class="editor-container">
         <textarea id="code-editor"></textarea>
       </div>
+      <!-- 外部ライブラリを介さず、HTML要素として直接構築 -->
       <div id="terminal-container" class="terminal-container"></div>
     </div>
   </div>
 
   <script>
     window.addEventListener('load', () => {
-      // 画面の準備ができるまでほんの少しだけ待つ
-      setTimeout(() => {
-        const CodeMirror = window.CodeMirror;
-        const Terminal = window.Terminal;
+      // 1. エディタの初期化
+      const CodeMirror = window.CodeMirror;
+      if (CodeMirror) {
+        const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+          lineNumbers: true,
+          theme: 'monokai'
+        });
+        editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
+      }
 
-        // 1. エディタの初期化
-        if (CodeMirror) {
-          const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-            lineNumbers: true,
-            theme: 'monokai'
-          });
-          editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
-        }
+      // 2. 外部ライブラリ（xterm.js）を一切使わず、DOM操作で文字を強制出力する独立回路
+      const container = document.getElementById('terminal-container');
+      if (container) {
+        container.innerHTML = ''; // クリア
 
-        // 2. ターミナルの初期化
-        if (Terminal) {
-          const container = document.getElementById('terminal-container');
-          if (container) {
-            container.innerHTML = ''; // 画面を完全にリセット
-
-            // サイズやアドオンを一旦すべて削ぎ落とし、純粋に「文字を出す」ことだけに特化
-            const term = new Terminal({
-              cursorBlink: true,
-              convertEol: true, // 改行コードをブラウザ用に自動変換する安全設定
-              theme: { 
-                background: '#000000',
-                foreground: '#ffffff' // 文字色を真っ白に強制
-              }
-            });
-            
-            // 画面にマウント
-            term.open(container);
-            
-            // 【究極の安全弁】マウント後に直接文字を流し込む
-            term.write('\x1b[1;32m' + '====================================' + '\x1b[0m\r\n');
-            term.write('\x1b[1;32m' + '       自作 Web IDE SYSTEM OK       ' + '\x1b[0m\r\n');
-            term.write('\x1b[1;32m' + '====================================' + '\x1b[0m\r\n');
-            term.write('ターミナルの文字描画回路が正常に接続されました。\r\n');
-            term.write('コマンドの入力を待機しています...\r\n');
+        // 1行ずつ文字を追加していく関数
+        function addLine(text, isGreen = false) {
+          const div = document.createElement('div');
+          div.className = 'line';
+          if (isGreen) {
+            div.innerHTML = `<span class="green">${text}</span>`;
+          } else {
+            div.textContent = text;
           }
+          container.appendChild(div);
         }
-      }, 300);
+
+        // 文字の強制書き込みを実行
+        addLine('====================================', true);
+        addLine('       自作 Web IDE HARDWARE OK     ', true);
+        addLine('====================================', true);
+        addLine('外部CDNに依存しないスタンドアロン描画に成功しました。');
+        addLine('ブラウザのレンダリング回路は正常に動作しています。');
+        
+        // 最後に点滅するカーソルを配置
+        const cursorLine = document.createElement('div');
+        cursorLine.className = 'line';
+        cursorLine.innerHTML = '❯ <span class="cursor"></span>';
+        container.appendChild(cursorLine);
+      }
     });
   </script>
 </body>
