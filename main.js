@@ -1,13 +1,16 @@
 import { WebContainer } from '@webcontainer/api';
 import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+// 変更前: import { FitAddon } from 'xterm-addon-fit';
+// 変更後: モジュール全体をインポートして、中身のクラスを取り出す形式にします
+import * as XtermAddonFit from 'xterm-addon-fit';
+const FitAddon = XtermAddonFit.FitAddon;
 
 // ターミナルの初期化
 const term = new Terminal({
   cursorBlink: true,
   theme: { background: '#000000' }
 });
-const fitAddon = new FitAddon();
+const fitAddon = new FitAddon(); // これでエラーが消えます
 term.loadAddon(fitAddon);
 
 async function initWebContainer() {
