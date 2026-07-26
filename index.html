@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE Pro</title>
 
-  <!-- 最優先でセキュリティの鍵（Service Worker）をロード -->
+  <!-- セキュリティの鍵（Service Worker）をロード -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- 安定した cdnjs (Cloudflare) からCSSをロード -->
+  <!-- cdnjs から安定したCSSをロード -->
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
@@ -37,6 +37,7 @@
     .line { margin-bottom: 4px; }
     .green { color: #00ff00; font-weight: bold; }
     .cyan { color: #00ffff; }
+    .red { color: #ff4d4d; font-weight: bold; }
     
     button { background: #007acc; color: white; border: none; padding: 6px 14px; cursor: pointer; border-radius: 4px; font-weight: bold; }
     button:hover { background: #0062a3; }
@@ -45,18 +46,15 @@
     .input-area { display: inline; background: transparent; color: #fff; border: none; outline: none; font-family: inherit; font-size: inherit; width: 80%; }
   </style>
 
-  <!-- ネットワーク制限を受けない最高に安定した通常スクリプト形式 -->
+  <!-- 安定したエディタコア -->
   <script src="https://cloudflare.com"></script>
   <script src="https://cloudflare.com"></script>
-  
-  <!-- 【超重要】外部ドメインを使わず、自分のリポジトリ（ローカル）に置いた実体ファイルを直読み -->
-  <script src="./libs/webcontainer.js"></script>
 </head>
 <body>
 
   <div id="app">
     <div class="header">
-      <span>自作 Web IDE Pro v1.3</span>
+      <span>自作 Web IDE Pro v1.4</span>
       <button id="save-btn">📁 ファイル保存</button>
       <button id="run-btn">▶ 実行 (node index.js)</button>
     </div>
@@ -68,13 +66,10 @@
     </div>
   </div>
 
-  <!-- type="module" や Import Map を廃止し、グローバルから安全に引き出します -->
   <script>
     window.addEventListener('load', () => {
       setTimeout(async () => {
         const CodeMirror = window.CodeMirror;
-        // ステップ1で配置したローカルのファイルからWebContainerオブジェクトが安全にロードされます
-        const WebContainer = window.WebContainer;
         const container = document.getElementById('terminal-container');
         if (!container) return;
         
@@ -86,6 +81,7 @@
           div.className = 'line';
           if (type === 'green') div.innerHTML = `<span class="green">${text}</span>`;
           else if (type === 'cyan') div.innerHTML = `<span class="cyan">${text}</span>`;
+          else if (type === 'red') div.innerHTML = `<span class="red">${text}</span>`;
           else div.textContent = text;
           container.appendChild(div);
           container.scrollTop = container.scrollHeight;
@@ -141,10 +137,31 @@
           });
         }
 
-        // --- 4. WebContainer 安全待機＆起動システム ---
+        // --- 4. WebContainer パス自己診断＆自動ブートシステム ---
         async function bootSystem() {
+          log('WebContainer コアファイルを読み込み中...');
+
+          // 【追加コード】別タグではなく、プログラム内部から直接ローカルファイルを取得しに行くことで、404の原因を暴きます
+          try {
+            // パス候補1: ./libs/webcontainer.js
+            const response = await fetch('./libs/webcontainer.js');
+            if (!response.ok) {
+              throw new Error(`ファイルが見つかりません (HTTP ${response.status})`);
+            }
+            
+            const scriptText = await response.text();
+            // 取得したテキストを安全に実行して window.WebContainer を登録
+            const runScript = new Function(scriptText);
+            runScript();
+          } catch (pathError) {
+            log(`【パス診断結果】ファイルの読み込みに失敗しました: ${pathError.message}`, 'red');
+            log('➔ リポジトリ直下に「libs」フォルダがあり、その中に「webcontainer.js」というファイル名で正しく保存されているか確認してください。', 'red');
+            return;
+          }
+
+          const WebContainer = window.WebContainer;
           if (!WebContainer) {
-            log('WebContainer コアの読み込みに失敗しています。ファイルの配置（libs/webcontainer.js）を確認してください。');
+            log('エラー: ファイルは見つかりましたが、WebContainerオブジェクトの生成に失敗しました。', 'red');
             return;
           }
 
@@ -162,7 +179,7 @@
             return;
           }
 
-          log('WebContainer コア: ローカル検証に成功。ブート中...');
+          log('WebContainer コア: 安全性を確認。ブート中...');
           try {
             webcontainerInstance = await WebContainer.boot();
             log('【システムOK】ブラウザ内Node.js環境が立ち上がりました！', 'cyan');
