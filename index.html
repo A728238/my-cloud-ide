@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
-  <!-- xterm.css を CDN から読み込み -->
+  
+  <!-- GitHub Pages用のセキュリティ対策スクリプトを最優先で読み込み -->
+  <script src="./coi-serviceworker.js"></script>
+
+  <!-- xterm.css を正しいURLから読み込み -->
   <link rel="stylesheet" href="https://jsdelivr.net" />
+  
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; }
     #app { display: flex; flex-direction: column; height: 100vh; }
     #terminal-container { flex: 1; padding: 10px; background: #000; }
   </style>
   
-  <!-- ブラウザにモジュールの場所を教える Import Map -->
+  <!-- 各パッケージの配信URLをフルパスに修正 -->
   <script type="importmap">
     {
       "imports": {
