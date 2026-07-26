@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
   
-  <!-- GitHub Pages用のセキュリティ対策スクリプトを最優先で読み込み -->
+  <!-- GitHub Pages用のセキュリティ対策（最優先） -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- xterm.css を正しいURLから読み込み -->
-  <link rel="stylesheet" href="https://jsdelivr.net" />
+  <!-- ローカルのCSSファイルを読み込み（CDN依存の排除） -->
+  <link rel="stylesheet" href="./libs/xterm.css" />
   
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; }
@@ -16,13 +16,13 @@
     #terminal-container { flex: 1; padding: 10px; background: #000; }
   </style>
   
-  <!-- 各パッケージの配信URLをフルパスに修正 -->
+  <!-- Import Mapの定義（URLを完全なフルURI形式に統一） -->
   <script type="importmap">
     {
       "imports": {
         "@webcontainer/api": "https://jsdelivr.net",
-        "xterm": "https://jsdelivr.net",
-        "xterm-addon-fit": "https://jsdelivr.net"
+        "xterm": "./libs/xterm.js",
+        "xterm-addon-fit": "./libs/xterm-addon-fit.js"
       }
     }
   </script>
