@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
 
-  <!-- Service Workerの過去の残骸を完全に消去 -->
+  <!-- Service Workerの過去の残骸を強制的に登録解除 -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -13,7 +13,7 @@
     }
   </script>
 
-  <!-- ネットワーク制限を受けにくい安全な大手 cdnjs (Cloudflare) からCSSのみをロード -->
+  <!-- 安定した cdnjs (Cloudflare) からCSSをロード -->
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
@@ -24,23 +24,34 @@
     .header { padding: 10px; border-bottom: 1px solid #333; font-weight: bold; background: #252526; }
     .main-container { display: flex; flex: 1; height: calc(100vh - 40px); }
     .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
-    .terminal-container { flex: 1; padding: 10px; background: #000; }
+    
+    /* 【超重要】ターミナルのサイズが潰れるのを防ぐため、明示的に100%の高さと横幅を強制固定 */
+    .terminal-container { 
+      flex: 1; 
+      padding: 15px; 
+      background: #000000 !important; 
+      height: 100% !important;
+      width: 100% !important;
+      box-sizing: border-box;
+    }
     .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
+    
+    /* xterm内部の文字が潰れるバグをCSSで強制的に上書き修正 */
+    .xterm .xterm-screen {
+      display: block !important;
+    }
   </style>
 
-  <!-- CORSエラーや自動通信バグを絶対に起こさない通常スクリプト形式（cdnjs経由） -->
+  <!-- エラーの起きない通常のスクリプト形式 -->
   <script src="https://cloudflare.com"></script>
   <script src="https://cloudflare.com"></script>
   <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  
-  <!-- WebContainer API（1本で独立動作するグローバル変数版を安全なcdnjsからロード） -->
   <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
   <div id="app">
-    <div class="header">自作 Web IDE 起動テスト（完全単一ファイル版）</div>
+    <div class="header">自作 Web IDE 起動テスト（スタイル強制版）</div>
     <div class="main-container">
       <div class="editor-container">
         <textarea id="code-editor"></textarea>
@@ -50,17 +61,14 @@
   </div>
 
   <script>
-    // ページの全アセットのロード完了を待つ
     window.addEventListener('load', () => {
-      // 画面のレンダリング（描画）を確実に終わらせるために200ミリ秒待つ
+      // 画面の準備ができるまでほんの少しだけ待つ
       setTimeout(() => {
         const CodeMirror = window.CodeMirror;
         const Terminal = window.Terminal;
-        const FitAddon = window.FitAddon ? window.FitAddon.FitAddon : null;
-        const WebContainer = window.WebContainer;
 
-        // --- 1. エディタの初期化 ---
-        if (CodeMirror && !document.querySelector('.CodeMirror')) {
+        // 1. エディタの初期化
+        if (CodeMirror) {
           const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
             lineNumbers: true,
             theme: 'monokai'
@@ -68,54 +76,34 @@
           editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
         }
 
-        // --- 2. ターミナルの初期化と文字表示 ---
+        // 2. ターミナルの初期化
         if (Terminal) {
           const container = document.getElementById('terminal-container');
           if (container) {
-            // 既存の古い表示を一度クリアする安全弁
-            container.innerHTML = '';
+            container.innerHTML = ''; // 画面を完全にリセット
 
+            // サイズやアドオンを一旦すべて削ぎ落とし、純粋に「文字を出す」ことだけに特化
             const term = new Terminal({
               cursorBlink: true,
-              theme: { background: '#000000' },
-              fontFamily: 'Courier New, monospace',
-              fontSize: 16
+              convertEol: true, // 改行コードをブラウザ用に自動変換する安全設定
+              theme: { 
+                background: '#000000',
+                foreground: '#ffffff' // 文字色を真っ白に強制
+              }
             });
             
-            // 画面にターミナルを物理的にマウント（固定）
+            // 画面にマウント
             term.open(container);
             
-            if (FitAddon) {
-              const fitAddon = new FitAddon();
-              term.loadAddon(fitAddon);
-              fitAddon.fit();
-            }
-
-            // 【超重要】マウント直後に一瞬だけ待ち時間を挟んでから文字を書き込む
-            setTimeout(() => {
-              term.write('====================================\r\n');
-              term.write('       自作 Web IDE 起動成功        \r\n');
-              term.write('====================================\r\n');
-              term.write('エディタとターミナルの同期が完了しました。\r\n');
-              
-              if (WebContainer) {
-                term.write('WebContainer ライブラリの自動ロードを確認。\r\n');
-              } else {
-                term.write('WebContainer API の読み込みを待機中...\r\n');
-              }
-            }, 50);
-
-            // ウィンドウのリサイズ時にもターミナルを自動追従させる
-            window.addEventListener('resize', () => {
-              if (FitAddon) {
-                const fitAddon = new FitAddon();
-                term.loadAddon(fitAddon);
-                fitAddon.fit();
-              }
-            });
+            // 【究極の安全弁】マウント後に直接文字を流し込む
+            term.write('\x1b[1;32m' + '====================================' + '\x1b[0m\r\n');
+            term.write('\x1b[1;32m' + '       自作 Web IDE SYSTEM OK       ' + '\x1b[0m\r\n');
+            term.write('\x1b[1;32m' + '====================================' + '\x1b[0m\r\n');
+            term.write('ターミナルの文字描画回路が正常に接続されました。\r\n');
+            term.write('コマンドの入力を待機しています...\r\n');
           }
         }
-      }, 200);
+      }, 300);
     });
   </script>
 </body>
