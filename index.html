@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
   
-  <!-- GitHub Pages用のセキュリティ対策（最優先） -->
+  <!-- セキュリティ対策を最優先 -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- xterm.css は公式CDNから直接安全に読み込み -->
-  <link rel="stylesheet" href="https://unpkg.com" />
+  <!-- 自分のサーバーから直接CSSを読み込み -->
+  <link rel="stylesheet" href="./libs/xterm.css" />
   
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; }
@@ -16,13 +16,13 @@
     #terminal-container { flex: 1; padding: 10px; background: #000; }
   </style>
 
-  <!-- 1つのImport Mapで全てのパッケージの「正しいフルURL」を定義（jsdelivrを完全排除） -->
+  <!-- 外部CDNを一切排除し、自分のリポジトリ内のファイルを100%信頼する設定 -->
   <script type="importmap">
     {
       "imports": {
-        "@webcontainer/api": "https://unpkg.com",
-        "xterm": "https://unpkg.com",
-        "xterm-addon-fit": "https://unpkg.com"
+        "@webcontainer/api": "./libs/webcontainer.js",
+        "xterm": "./libs/xterm.js",
+        "xterm-addon-fit": "./libs/xterm-addon-fit.js"
       }
     }
   </script>
@@ -35,7 +35,7 @@
     <div id="terminal-container"></div>
   </div>
   
-  <!-- パラメーターを更新して古いキャッシュを完全に破壊 -->
-  <script type="module" src="./main.js?update=final"></script>
+  <!-- バージョンパラメータを更新して確実に最新をロード -->
+  <script type="module" src="./main.js?v=pure-local"></script>
 </body>
 </html>
