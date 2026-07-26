@@ -1,6 +1,8 @@
-import { WebContainer } from '@webcontainer/api';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+// 冒頭の import 文はすべて削除（HTML側で読み込み済みのため）
+
+// グローバル変数からオブジェクトを取得
+const Terminal = window.Terminal;
+const FitAddon = window.FitAddon.FitAddon;
 
 // ターミナルの初期化
 const term = new Terminal({
@@ -10,22 +12,22 @@ const term = new Terminal({
 const fitAddon = new FitAddon();
 term.loadAddon(fitAddon);
 
-term.write('=== 自作 Web IDE 初期化プロセス ===\r\n');
-
 async function initWebContainer() {
   try {
     const container = document.getElementById('terminal-container');
-    if (!container) {
-      throw new Error('ターミナルを表示するコンテナが見つかりません。');
-    }
+    if (!container) return;
     
     term.open(container);
     fitAddon.fit();
-    term.write('ターミナルUIの描画に成功しました。\r\n');
+    
+    term.write('=== 自作 Web IDE 初期化プロセス ===\r\n');
     term.write('WebContainer をブート中...\r\n');
 
-    // WebContainerの起動
-    const webcontainerInstance = await WebContainer.boot();
+    // HTML側でロードした WebContainer の起動
+    if (!window.WebContainer) {
+      throw new Error('WebContainer API の読み込みに失敗しています。');
+    }
+    const webcontainerInstance = await window.WebContainer.boot();
     term.write('WebContainer が正常に起動しました。\r\n');
 
     // シェル（jsh）の起動
@@ -54,7 +56,6 @@ async function initWebContainer() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  // 画面に強制的にターミナルを一度マウントして文字を見せる
   const container = document.getElementById('terminal-container');
   if (container) {
     term.open(container);
