@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
+  <!-- セキュリティ対策（必須） -->
   <script src="./coi-serviceworker.js"></script>
-  <link rel="stylesheet" href="./libs/xterm.css" />
-  
-  <!-- CodeMirror（エディタ）のスタイル -->
+
+  <!-- スタイルシートの読み込み（CSSはCORSの影響を受けにくいためCDNから直接取得） -->
+  <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
 
@@ -22,19 +23,14 @@
     button:hover { background: #0062a3; }
   </style>
 
-  <script src="./libs/xterm.js"></script>
-  <script src="./libs/xterm-addon-fit.js"></script>
-  
-  <!-- CodeMirrorの本体スクリプト -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-
+  <!-- 【重要】すべてのJavascript依存関係を正しいESM形式のURLで一元管理（ローカルファイルは使いません） -->
   <script type="importmap">
     {
       "imports": {
-        "@webcontainer/api": "./libs/webcontainer.js",
-        "xterm": "./libs/xterm.js",
-        "xterm-addon-fit": "./libs/xterm-addon-fit.js"
+        "@webcontainer/api": "https://jsdelivr.net",
+        "xterm": "https://jsdelivr.net",
+        "xterm-addon-fit": "https://jsdelivr.net",
+        "codemirror": "https://jsdelivr.net"
       }
     }
   </script>
@@ -46,15 +42,14 @@
       <button id="save-btn">ファイルを保存 (index.js)</button>
     </div>
     <div class="main-container">
-      <!-- 左側: エディタ領域 -->
       <div class="editor-container">
         <textarea id="code-editor"></textarea>
       </div>
-      <!-- 右側: ターミナル領域 -->
       <div id="terminal-container" class="terminal-container"></div>
     </div>
   </div>
   
-  <script type="module" src="./main.js?v=ide-features"></script>
+  <!-- バージョンパラメータを完全に新しくしてキャッシュを破壊 -->
+  <script type="module" src="./main.js?v=ide-fix-esm"></script>
 </body>
 </html>
