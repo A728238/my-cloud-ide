@@ -3,20 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
-  
-  <!-- セキュリティ対策を最優先 -->
   <script src="./coi-serviceworker.js"></script>
-
-  <!-- 自分のサーバーから直接CSSを読み込み -->
   <link rel="stylesheet" href="./libs/xterm.css" />
   
+  <!-- CodeMirror（エディタ）のスタイル -->
+  <link rel="stylesheet" href="https://cloudflare.com" />
+  <link rel="stylesheet" href="https://cloudflare.com" />
+
   <style>
-    body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; }
+    body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
     #app { display: flex; flex-direction: column; height: 100vh; }
-    #terminal-container { flex: 1; padding: 10px; background: #000; }
+    .header { padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; }
+    .main-container { display: flex; flex: 1; height: calc(100vh - 50px); }
+    .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
+    .terminal-container { flex: 1; padding: 10px; background: #000; }
+    .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
+    button { background: #007acc; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #0062a3; }
   </style>
 
-  <!-- 外部CDNを一切排除し、自分のリポジトリ内のファイルを100%信頼する設定 -->
+  <script src="./libs/xterm.js"></script>
+  <script src="./libs/xterm-addon-fit.js"></script>
+  
+  <!-- CodeMirrorの本体スクリプト -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+
   <script type="importmap">
     {
       "imports": {
@@ -29,13 +41,20 @@
 </head>
 <body>
   <div id="app">
-    <div style="padding: 10px; border-bottom: 1px solid #333;">
-      <span>自作 Web IDE ターミナル</span>
+    <div class="header">
+      <span>自作 Web IDE v1.0</span>
+      <button id="save-btn">ファイルを保存 (index.js)</button>
     </div>
-    <div id="terminal-container"></div>
+    <div class="main-container">
+      <!-- 左側: エディタ領域 -->
+      <div class="editor-container">
+        <textarea id="code-editor"></textarea>
+      </div>
+      <!-- 右側: ターミナル領域 -->
+      <div id="terminal-container" class="terminal-container"></div>
+    </div>
   </div>
   
-  <!-- バージョンパラメータを更新して確実に最新をロード -->
-  <script type="module" src="./main.js?v=pure-local"></script>
+  <script type="module" src="./main.js?v=ide-features"></script>
 </body>
 </html>
