@@ -3,17 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
-  <link rel="stylesheet" href="./node_modules/xterm/css/xterm.css" />
+  <!-- xterm.css を CDN から読み込み -->
+  <link rel="stylesheet" href="https://jsdelivr.net" />
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; }
-    #app { display: flex; flex-direction: column; h-100vh; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
     #terminal-container { flex: 1; padding: 10px; background: #000; }
   </style>
+  
+  <!-- ブラウザにモジュールの場所を教える Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://jsdelivr.net",
+        "xterm": "https://jsdelivr.net",
+        "xterm-addon-fit": "https://jsdelivr.net"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="app">
     <div style="padding: 10px; border-bottom: 1px solid #333;">
-      <button id="run-btn">npm install & start</button>
+      <span>自作 Web IDE ターミナル</span>
     </div>
     <div id="terminal-container"></div>
   </div>
