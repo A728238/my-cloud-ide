@@ -50,15 +50,16 @@
   </div>
 
   <script>
-    // ページの画像やCSSなど、全ての読み込みが『完全に』完了したタイミングで安全に実行
+    // ページの全アセットのロード完了を待つ
     window.addEventListener('load', () => {
-      // 100ミリ秒（0.1秒）だけ画面の描画を待つ安全弁（タイムアウト）を設定
+      // 画面のレンダリング（描画）を確実に終わらせるために200ミリ秒待つ
       setTimeout(() => {
         const CodeMirror = window.CodeMirror;
         const Terminal = window.Terminal;
         const FitAddon = window.FitAddon ? window.FitAddon.FitAddon : null;
+        const WebContainer = window.WebContainer;
 
-        // 1. エディタの初期化
+        // --- 1. エディタの初期化 ---
         if (CodeMirror && !document.querySelector('.CodeMirror')) {
           const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
             lineNumbers: true,
@@ -67,15 +68,21 @@
           editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
         }
 
-        // 2. ターミナルの初期化
+        // --- 2. ターミナルの初期化と文字表示 ---
         if (Terminal) {
-          const term = new Terminal({
-            cursorBlink: true,
-            theme: { background: '#000000' }
-          });
-          
           const container = document.getElementById('terminal-container');
           if (container) {
+            // 既存の古い表示を一度クリアする安全弁
+            container.innerHTML = '';
+
+            const term = new Terminal({
+              cursorBlink: true,
+              theme: { background: '#000000' },
+              fontFamily: 'Courier New, monospace',
+              fontSize: 16
+            });
+            
+            // 画面にターミナルを物理的にマウント（固定）
             term.open(container);
             
             if (FitAddon) {
@@ -84,12 +91,31 @@
               fitAddon.fit();
             }
 
-            term.write('=== 自作 Web IDE 初期化 ===\r\n');
-            term.write('画面の描画とライブラリのロードに成功しました！\r\n');
-            term.write('自作Web IDEのベースが完成しました。\r\n');
+            // 【超重要】マウント直後に一瞬だけ待ち時間を挟んでから文字を書き込む
+            setTimeout(() => {
+              term.write('====================================\r\n');
+              term.write('       自作 Web IDE 起動成功        \r\n');
+              term.write('====================================\r\n');
+              term.write('エディタとターミナルの同期が完了しました。\r\n');
+              
+              if (WebContainer) {
+                term.write('WebContainer ライブラリの自動ロードを確認。\r\n');
+              } else {
+                term.write('WebContainer API の読み込みを待機中...\r\n');
+              }
+            }, 50);
+
+            // ウィンドウのリサイズ時にもターミナルを自動追従させる
+            window.addEventListener('resize', () => {
+              if (FitAddon) {
+                const fitAddon = new FitAddon();
+                term.loadAddon(fitAddon);
+                fitAddon.fit();
+              }
+            });
           }
         }
-      }, 100);
+      }, 200);
     });
   </script>
 </body>
