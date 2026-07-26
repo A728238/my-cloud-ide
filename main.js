@@ -2,8 +2,6 @@ import { WebContainer } from '@webcontainer/api';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 
-let webcontainerInstance;
-
 const term = new Terminal({
   cursorBlink: true,
   theme: { background: '#000000' }
@@ -17,7 +15,7 @@ term.write('WebContainer を初期化中...\r\n');
 
 async function initWebContainer() {
   try {
-    webcontainerInstance = await WebContainer.boot();
+    const webcontainerInstance = await WebContainer.boot();
     term.write('WebContainer が起動しました。\r\n');
 
     const shellProcess = await webcontainerInstance.spawn('jsh', {
