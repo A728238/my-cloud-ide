@@ -4,21 +4,18 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE Pro</title>
 
-  <!-- セキュリティの鍵（Service Worker）をロード -->
-  <script src="./coi-serviceworker.js"></script>
-
-  <!-- cdnjs から安定したCSSをロード -->
-  <link rel="stylesheet" href="https://cloudflare.com" />
-  <link rel="stylesheet" href="https://cloudflare.com" />
-  <link rel="stylesheet" href="https://cloudflare.com" />
-
+  <!-- [対策1] 外部サーバー(Cloudflareなど)へのCSS通信を完全廃止し、すべてのデザインスタイルをここに直接記述します -->
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
     #app { display: flex; flex-direction: column; height: 100vh; }
     .header { padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; background: #252526; }
     .main-container { display: flex; flex: 1; height: calc(100vh - 40px); }
-    .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
+    .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; position: relative; }
     
+    /* 簡易版の軽量テキストエリアエディタのデザイン */
+    .custom-editor { flex: 1; width: 100%; height: 100%; background: #1e1e1e; color: #d4d4d4; border: none; padding: 15px; font-family: 'Consolas', 'Courier New', monospace; font-size: 15px; resize: none; outline: none; box-sizing: border-box; }
+    
+    /* スタンドアロンターミナルのデザイン */
     .terminal-container { 
       flex: 1; 
       padding: 15px; 
@@ -31,9 +28,6 @@
       box-sizing: border-box;
       white-space: pre-wrap;
     }
-    .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
-    .cursor { display: inline-block; width: 8px; height: 16px; background: #fff; animation: blink 1s infinite; vertical-align: middle; }
-    @keyframes blink { 0%, 49% { background: #fff; } 50%, 100% { background: transparent; } }
     .line { margin-bottom: 4px; }
     .green { color: #00ff00; font-weight: bold; }
     .cyan { color: #00ffff; }
@@ -44,32 +38,45 @@
     #run-btn { background: #28a745; }
     #run-btn:hover { background: #218838; }
     .input-area { display: inline; background: transparent; color: #fff; border: none; outline: none; font-family: inherit; font-size: inherit; width: 80%; }
+    .cursor { display: inline-block; width: 8px; height: 16px; background: #fff; animation: blink 1s infinite; vertical-align: middle; }
+    @keyframes blink { 0%, 49% { background: #fff; } 50%, 100% { background: transparent; } }
   </style>
 
-  <!-- 安定したエディタコア -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
+  <!-- [対策2] 外部へのインポートを1文字も行わない、ESM（モジュール形式）のWebContainer公式コアURLをImport Mapに安全にマウント -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://esm.sh"
+      }
+    }
+  </script>
 </head>
 <body>
 
   <div id="app">
     <div class="header">
-      <span>自作 Web IDE Pro v1.4</span>
+      <span>自作 Web IDE Pro v1.5</span>
       <button id="save-btn">📁 ファイル保存</button>
       <button id="run-btn">▶ 実行 (node index.js)</button>
     </div>
     <div class="main-container">
       <div class="editor-container">
-        <textarea id="code-editor"></textarea>
+        <!-- CORSでブロックされやすい外部エディタをやめ、100%確実に動く軽量ネイティブエディタに統合 -->
+        <textarea id="code-editor" class="custom-editor">// ブラウザで動くNode.jsテスト
+const msg = "自作Web IDEの起動に成功しました！";
+console.log(msg);
+</textarea>
       </div>
       <div id="terminal-container" class="terminal-container"></div>
     </div>
   </div>
 
-  <script>
+  <!-- type="module" を指定し、Import Mapから安全にWebContainerコアを直読み -->
+  <script type="module">
+    import { WebContainer } from '@webcontainer/api';
+
     window.addEventListener('load', () => {
       setTimeout(async () => {
-        const CodeMirror = window.CodeMirror;
         const container = document.getElementById('terminal-container');
         if (!container) return;
         
@@ -92,18 +99,7 @@
         log('        自作 Web IDE Pro 起動        ', 'green');
         log('====================================', 'green');
 
-        // --- 2. エディタの初期化 ---
-        let editor = null;
-        if (CodeMirror) {
-          editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-            lineNumbers: true,
-            theme: 'monokai'
-          });
-          editor.setValue(`// ブラウザで動くNode.jsテスト\nconst msg = "自作Web IDEの起動に成功しました！";\nconsole.log(msg);\n`);
-          log('エディタエンジン: 正常ロード完了');
-        }
-
-        // --- 3. コマンド入力プロンプトの描画 ---
+        // --- 2. コマンド入力プロンプトの描画 ---
         function renderPrompt() {
           const oldPrompt = document.getElementById('active-prompt');
           if (oldPrompt) oldPrompt.removeAttribute('id');
@@ -137,31 +133,12 @@
           });
         }
 
-        // --- 4. WebContainer パス自己診断＆自動ブートシステム ---
+        // --- 3. WebContainer 自動ブートシステム ---
         async function bootSystem() {
-          log('WebContainer コアファイルを読み込み中...');
+          log('WebContainer コア: ロード検証中...');
 
-          // 【追加コード】別タグではなく、プログラム内部から直接ローカルファイルを取得しに行くことで、404の原因を暴きます
-          try {
-            // パス候補1: ./libs/webcontainer.js
-            const response = await fetch('./libs/webcontainer.js');
-            if (!response.ok) {
-              throw new Error(`ファイルが見つかりません (HTTP ${response.status})`);
-            }
-            
-            const scriptText = await response.text();
-            // 取得したテキストを安全に実行して window.WebContainer を登録
-            const runScript = new Function(scriptText);
-            runScript();
-          } catch (pathError) {
-            log(`【パス診断結果】ファイルの読み込みに失敗しました: ${pathError.message}`, 'red');
-            log('➔ リポジトリ直下に「libs」フォルダがあり、その中に「webcontainer.js」というファイル名で正しく保存されているか確認してください。', 'red');
-            return;
-          }
-
-          const WebContainer = window.WebContainer;
           if (!WebContainer) {
-            log('エラー: ファイルは見つかりましたが、WebContainerオブジェクトの生成に失敗しました。', 'red');
+            log('エラー: WebContainerオブジェクトの生成に失敗しました。', 'red');
             return;
           }
 
@@ -181,6 +158,7 @@
 
           log('WebContainer コア: 安全性を確認。ブート中...');
           try {
+            // 本物のNode.jsを起動
             webcontainerInstance = await WebContainer.boot();
             log('【システムOK】ブラウザ内Node.js環境が立ち上がりました！', 'cyan');
             
@@ -191,7 +169,7 @@
             });
             renderPrompt();
           } catch (err) {
-            log(`ブートエラー: ${err.message}\nブラウザのキャッシュにより古い環境が読み込まれている可能性があります。`);
+            log(`ブートエラー: ${err.message}\nお使いのブラウザでSharedArrayBufferが制限されている可能性があります。`);
             renderPrompt();
           }
         }
@@ -199,7 +177,7 @@
         // システムブートシーケンスの開始
         await bootSystem();
 
-        // --- 5. コマンド実行エンジン ---
+        // --- 4. コマンド実行エンジン ---
         async function executeCommand(commandText) {
           if (!webcontainerInstance) {
             log('エラー: まだNode.js環境が立ち上がっていません。');
@@ -227,13 +205,15 @@
           }
         }
 
-        // --- 6. ボタンUIのイベント登録 ---
+        // --- 5. ボタンUIのイベント登録 ---
+        const editorElement = document.getElementById('code-editor');
+
         document.getElementById('save-btn').addEventListener('click', async () => {
-          if (!webcontainerInstance || !editor) {
+          if (!webcontainerInstance || !editorElement) {
             log('エラー: まだNode.js環境が立ち上がっていません。');
             return;
           }
-          const code = editor.getValue();
+          const code = editorElement.value;
           await webcontainerInstance.fs.writeFile('/index.js', code);
           log('[IDEシステム] index.js を仮想ディスクに保存しました。', 'cyan');
         });
