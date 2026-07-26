@@ -30,7 +30,7 @@ async function initWebContainer() {
       terminal: { cols: term.cols, rows: term.rows },
     });
 
-    // 入出力の同期
+    // 入出力ストリームの結合
     shellProcess.output.pipeTo(
       new WritableStream({
         write(data) { term.write(data); },
@@ -45,7 +45,7 @@ async function initWebContainer() {
       shellProcess.resize({ cols: term.cols, rows: term.rows });
     });
   } catch (error) {
-    term.write(`\r\n【エラー発生】: ${error.message}\r\n`);
+    term.write(`\r\n【起動エラー】: ${error.message}\r\n`);
     console.error('WebIDE Error:', error);
   }
 }
