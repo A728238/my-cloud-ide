@@ -4,20 +4,21 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE Pro</title>
 
-  <!-- 【重要】最優先でセキュリティの鍵（Service Worker）をロード -->
+  <!-- 最優先でセキュリティの鍵（Service Worker）をロード -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- 必要なCSSのみをロード -->
+  <!-- cdnjs から安定したCSSをロード -->
+  <link rel="stylesheet" href="https://cloudflare.com" />
+  <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
 
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
     #app { display: flex; flex-direction: column; height: 100vh; }
     .header { padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; background: #252526; }
-    .main-container { display: flex; flex: 1; height: calc(100vh - 50px); }
+    .main-container { display: flex; flex: 1; height: calc(100vh - 40px); }
     .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
     
-    /* 安定動作する自作ターミナルのスタイル */
     .terminal-container { 
       flex: 1; 
       padding: 15px; 
@@ -37,7 +38,6 @@
     .green { color: #00ff00; font-weight: bold; }
     .cyan { color: #00ffff; }
     
-    /* 操作ボタンのスタイル */
     button { background: #007acc; color: white; border: none; padding: 6px 14px; cursor: pointer; border-radius: 4px; font-weight: bold; }
     button:hover { background: #0062a3; }
     #run-btn { background: #28a745; }
@@ -45,16 +45,24 @@
     .input-area { display: inline; background: transparent; color: #fff; border: none; outline: none; font-family: inherit; font-size: inherit; width: 80%; }
   </style>
 
-  <!-- 正常動作が確認できているエディタとWebContainerの独立コア -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
+  <!-- 【超重要】WebContainerはESM(モジュール)専用の大手CDN（unpkgの実体ファイル）に修正 -->
+  <!-- エディタ本体やxtermもすべて同じ信頼できるモジュール形式URLで統一します -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://unpkg.com",
+        "xterm": "https://unpkg.com",
+        "xterm-addon-fit": "https://unpkg.com",
+        "codemirror": "https://unpkg.com"
+      }
+    }
+  </script>
 </head>
 <body>
 
   <div id="app">
     <div class="header">
-      <span>自作 Web IDE Pro v1.1</span>
+      <span>自作 Web IDE Pro v1.2</span>
       <button id="save-btn">📁 ファイル保存</button>
       <button id="run-btn">▶ 実行 (node index.js)</button>
     </div>
@@ -66,19 +74,14 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { WebContainer } from '@webcontainer/api';
+    import CodeMirror from 'codemirror';
+
     window.addEventListener('load', () => {
-      // 画面のHTML要素が完全に構築されるのを確実に待つ安全弁（300ミリ秒）
       setTimeout(async () => {
-        const CodeMirror = window.CodeMirror;
-        const WebContainer = window.WebContainer;
-        
-        // 【修正ポイント】一番最初に要素を確実にキャッチし、存在チェックを行います
         const container = document.getElementById('terminal-container');
-        if (!container) {
-          console.error('エラー: terminal-container 要素が見つかりません。');
-          return;
-        }
+        if (!container) return;
         
         let webcontainerInstance = null;
 
@@ -187,7 +190,7 @@
         // --- 5. コマンド実行エンジン ---
         async function executeCommand(commandText) {
           if (!webcontainerInstance) {
-            log('エラー: まだNode.js環境が立ち上がっていません。起動完了（水色の文字）をお待ちください。');
+            log('エラー: まだNode.js環境が立ち上がっていません。');
             renderPrompt();
             return;
           }
@@ -233,7 +236,7 @@
           if (activeInput) activeInput.focus();
         });
 
-      }, 300); // 待機時間を300msに微増して安全性を強化
+      }, 300);
     });
   </script>
 </body>
