@@ -1,9 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>自作 Web IDE Pro</title>
+
+  <!-- 【重要】最優先でセキュリティの鍵（Service Worker）をロード -->
+  <script src="./coi-serviceworker.js"></script>
+
+  <!-- 必要なCSSのみをロード -->
+  <link rel="stylesheet" href="https://cloudflare.com" />
+
+  <style>
+    body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
+    .header { padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; background: #252526; }
+    .main-container { display: flex; flex: 1; height: calc(100vh - 50px); }
+    .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
+    
+    /* 安定動作する自作ターミナルのスタイル */
+    .terminal-container { 
+      flex: 1; 
+      padding: 15px; 
+      background: #000000 !important; 
+      color: #ffffff !important;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 15px;
+      line-height: 1.4;
+      overflow-y: auto;
+      box-sizing: border-box;
+      white-space: pre-wrap;
+    }
+    .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
+    .cursor { display: inline-block; width: 8px; height: 16px; background: #fff; animation: blink 1s infinite; vertical-align: middle; }
+    @keyframes blink { 0%, 49% { background: #fff; } 50%, 100% { background: transparent; } }
+    .line { margin-bottom: 4px; }
+    .green { color: #00ff00; font-weight: bold; }
+    .cyan { color: #00ffff; }
+    
+    /* 操作ボタンのスタイル */
+    button { background: #007acc; color: white; border: none; padding: 6px 14px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    button:hover { background: #0062a3; }
+    #run-btn { background: #28a745; }
+    #run-btn:hover { background: #218838; }
+    .input-area { display: inline; background: transparent; color: #fff; border: none; outline: none; font-family: inherit; font-size: inherit; width: 80%; }
+  </style>
+
+  <!-- 正常動作が確認できているエディタとWebContainerの独立コア -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+</head>
+<body>
+
+  <div id="app">
+    <div class="header">
+      <span>自作 Web IDE Pro v1.1</span>
+      <button id="save-btn">📁 ファイル保存</button>
+      <button id="run-btn">▶ 実行 (node index.js)</button>
+    </div>
+    <div class="main-container">
+      <div class="editor-container">
+        <textarea id="code-editor"></textarea>
+      </div>
+      <div id="terminal-container" class="terminal-container"></div>
+    </div>
+  </div>
+
   <script>
     window.addEventListener('load', () => {
+      // 画面のHTML要素が完全に構築されるのを確実に待つ安全弁（300ミリ秒）
       setTimeout(async () => {
         const CodeMirror = window.CodeMirror;
         const WebContainer = window.WebContainer;
+        
+        // 【修正ポイント】一番最初に要素を確実にキャッチし、存在チェックを行います
         const container = document.getElementById('terminal-container');
+        if (!container) {
+          console.error('エラー: terminal-container 要素が見つかりません。');
+          return;
+        }
         
         let webcontainerInstance = null;
 
@@ -48,7 +123,6 @@
           container.appendChild(promptLine);
           
           const input = promptLine.querySelector('.input-area');
-          // Autofocusエラーを防ぐため、少しだけタイミングを遅らせて安全にフォーカス
           setTimeout(() => { if (input) input.focus(); }, 50);
 
           input.addEventListener('keydown', async (e) => {
@@ -76,29 +150,25 @@
             return;
           }
 
-          // 【超重要】Service Worker が「有効（activated）」かつ「制御下（controller）」に入るまで1秒ずつ待機するループ
+          // Service Worker が有効化されて制御下に入るまで待機
           if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
             log('セキュリティ環境（Service Worker）の有効化を待機中... (数秒かかります)');
             
-            // 準備が整うまで1秒ごとに自分を再チェックするタイマー
-            constセーフティタイマー = setInterval(async () => {
+            const safetyTimer = setInterval(async () => {
               if (navigator.serviceWorker.controller) {
-                clearInterval(セーフティタイマー);
+                clearInterval(safetyTimer);
                 log('セキュリティ環境の確立を確認しました！システムを起動します。', 'cyan');
-                // ページを一度だけ安全にリフレッシュしてヘッダーを確定させる
                 window.location.reload();
               }
             }, 1000);
-            return; // 準備ができるまで以下のブート処理を一時停止
+            return;
           }
 
           log('WebContainer コア: 安全性を確認。ブート中...');
           try {
-            // セキュリティの鍵が確実に有効な状態でNode.jsを起動
             webcontainerInstance = await WebContainer.boot();
             log('【システムOK】ブラウザ内Node.js環境が立ち上がりました！', 'cyan');
             
-            // 初期仮想ファイルの作成
             await webcontainerInstance.mount({
               'index.js': {
                 file: { contents: 'console.log("Hello WebContainer");' }
@@ -117,7 +187,7 @@
         // --- 5. コマンド実行エンジン ---
         async function executeCommand(commandText) {
           if (!webcontainerInstance) {
-            log('エラー: WebContainer環境が準備できていません。上部の「📁 ファイル保存」やコマンド入力の前に、システムの起動完了（水色の文字）をお待ちください。');
+            log('エラー: まだNode.js環境が立ち上がっていません。起動完了（水色の文字）をお待ちください。');
             renderPrompt();
             return;
           }
@@ -143,7 +213,6 @@
         }
 
         // --- 6. ボタンUIのイベント登録 ---
-        // 📁 保存ボタン
         document.getElementById('save-btn').addEventListener('click', async () => {
           if (!webcontainerInstance || !editor) {
             log('エラー: まだNode.js環境が立ち上がっていません。');
@@ -154,7 +223,6 @@
           log('[IDEシステム] index.js を仮想ディスクに保存しました。', 'cyan');
         });
 
-        // ▶ 実行ボタン
         document.getElementById('run-btn').addEventListener('click', async () => {
           log('[IDEシステム] 実行プロセスをトリガーしました...', 'cyan');
           await executeCommand('node index.js');
@@ -165,6 +233,8 @@
           if (activeInput) activeInput.focus();
         });
 
-      }, 200);
+      }, 300); // 待機時間を300msに微増して安全性を強化
     });
   </script>
+</body>
+</html>
