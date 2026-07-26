@@ -1,71 +1,3 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>自作 Web IDE Pro</title>
-
-  <!-- 【重要】最優先でセキュリティの鍵（Service Worker）をロード -->
-  <script src="./coi-serviceworker.js"></script>
-
-  <!-- 必要なCSSのみをロード -->
-  <link rel="stylesheet" href="https://cloudflare.com" />
-
-  <style>
-    body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
-    #app { display: flex; flex-direction: column; height: 100vh; }
-    .header { padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; background: #252526; }
-    .main-container { display: flex; flex: 1; height: calc(100vh - 50px); }
-    .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
-    
-    /* 安定動作する自作ターミナルのスタイル */
-    .terminal-container { 
-      flex: 1; 
-      padding: 15px; 
-      background: #000000 !important; 
-      color: #ffffff !important;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 15px;
-      line-height: 1.4;
-      overflow-y: auto;
-      box-sizing: border-box;
-      white-space: pre-wrap;
-    }
-    .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
-    .cursor { display: inline-block; width: 8px; height: 16px; background: #fff; animation: blink 1s infinite; vertical-align: middle; }
-    @keyframes blink { 0%, 49% { background: #fff; } 50%, 100% { background: transparent; } }
-    .line { margin-bottom: 4px; }
-    .green { color: #00ff00; font-weight: bold; }
-    .cyan { color: #00ffff; }
-    
-    /* 操作ボタンのスタイル */
-    button { background: #007acc; color: white; border: none; padding: 6px 14px; cursor: pointer; border-radius: 4px; font-weight: bold; }
-    button:hover { background: #0062a3; }
-    #run-btn { background: #28a745; }
-    #run-btn:hover { background: #218838; }
-    .input-area { display: inline; background: transparent; color: #fff; border: none; outline: none; font-family: inherit; font-size: inherit; width: 80%; }
-  </style>
-
-  <!-- 正常動作が確認できているエディタとWebContainerの独立コア -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-</head>
-<body>
-
-  <div id="app">
-    <div class="header">
-      <span>自作 Web IDE Pro v1.1</span>
-      <button id="save-btn">📁 ファイル保存</button>
-      <button id="run-btn">▶ 実行 (node index.js)</button>
-    </div>
-    <div class="main-container">
-      <div class="editor-container">
-        <textarea id="code-editor"></textarea>
-      </div>
-      <div id="terminal-container" class="terminal-container"></div>
-    </div>
-  </div>
-
   <script>
     window.addEventListener('load', () => {
       setTimeout(async () => {
@@ -74,7 +6,6 @@
         const container = document.getElementById('terminal-container');
         
         let webcontainerInstance = null;
-        let currentCommand = "";
 
         // --- 1. ターミナル描画用関数 ---
         function log(text, type = '') {
@@ -105,7 +36,6 @@
 
         // --- 3. コマンド入力プロンプトの描画 ---
         function renderPrompt() {
-          // 古いプロンプトやカーソルを削除
           const oldPrompt = document.getElementById('active-prompt');
           if (oldPrompt) oldPrompt.removeAttribute('id');
           const oldCursor = document.querySelector('.cursor');
@@ -114,20 +44,20 @@
           const promptLine = document.createElement('div');
           promptLine.className = 'line';
           promptLine.id = 'active-prompt';
-          promptLine.innerHTML = `❯ <input type="text" class="input-area" autofocus><span class="cursor"></span>`;
+          promptLine.innerHTML = `❯ <input type="text" class="input-area"><span class="cursor"></span>`;
           container.appendChild(promptLine);
           
           const input = promptLine.querySelector('.input-area');
-          input.focus();
+          // Autofocusエラーを防ぐため、少しだけタイミングを遅らせて安全にフォーカス
+          setTimeout(() => { if (input) input.focus(); }, 50);
 
-          // エンターキーが押された時のコマンド実行処理
           input.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
               const cmd = input.value.trim();
               input.disabled = true;
-              document.querySelector('.cursor').remove();
+              const cursor = promptLine.querySelector('.cursor');
+              if (cursor) cursor.remove();
               
-              // 入力されたコマンドをログに刻む
               promptLine.innerHTML = `❯ ${cmd}`;
               
               if (cmd) {
@@ -139,13 +69,34 @@
           });
         }
 
-        // --- 4. WebContainer (Node.js環境) の初期化 ---
-        if (WebContainer) {
-          log('WebContainer コア: ロード完了。システムをマウント中...');
+        // --- 4. WebContainer 安全待機＆起動システム ---
+        async function bootSystem() {
+          if (!WebContainer) {
+            log('WebContainer コアの読み込みに失敗しています。');
+            return;
+          }
+
+          // 【超重要】Service Worker が「有効（activated）」かつ「制御下（controller）」に入るまで1秒ずつ待機するループ
+          if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+            log('セキュリティ環境（Service Worker）の有効化を待機中... (数秒かかります)');
+            
+            // 準備が整うまで1秒ごとに自分を再チェックするタイマー
+            constセーフティタイマー = setInterval(async () => {
+              if (navigator.serviceWorker.controller) {
+                clearInterval(セーフティタイマー);
+                log('セキュリティ環境の確立を確認しました！システムを起動します。', 'cyan');
+                // ページを一度だけ安全にリフレッシュしてヘッダーを確定させる
+                window.location.reload();
+              }
+            }, 1000);
+            return; // 準備ができるまで以下のブート処理を一時停止
+          }
+
+          log('WebContainer コア: 安全性を確認。ブート中...');
           try {
-            // 本物のNode.js仮想環境を起動
+            // セキュリティの鍵が確実に有効な状態でNode.jsを起動
             webcontainerInstance = await WebContainer.boot();
-            log('【システムOK】ブラウザ内Node.js環境が立ち上がりました。', 'cyan');
+            log('【システムOK】ブラウザ内Node.js環境が立ち上がりました！', 'cyan');
             
             // 初期仮想ファイルの作成
             await webcontainerInstance.mount({
@@ -155,15 +106,18 @@
             });
             renderPrompt();
           } catch (err) {
-            log(`環境エラー: ${err.message}\n※ローカル開発時はCOOP/COEPヘッダーが必要です。`);
+            log(`ブートエラー: ${err.message}\nブラウザのキャッシュにより古い環境が読み込まれている可能性があります。`);
             renderPrompt();
           }
         }
 
+        // システムブートシーケンスの開始
+        await bootSystem();
+
         // --- 5. コマンド実行エンジン ---
         async function executeCommand(commandText) {
           if (!webcontainerInstance) {
-            log('エラー: WebContainer環境が準備できていません。');
+            log('エラー: WebContainer環境が準備できていません。上部の「📁 ファイル保存」やコマンド入力の前に、システムの起動完了（水色の文字）をお待ちください。');
             renderPrompt();
             return;
           }
@@ -172,18 +126,15 @@
           const program = args.shift();
 
           try {
-            // WebContainer内でプロセス（コマンド）を実行
             const process = await webcontainerInstance.spawn(program, args);
             
-            // 出力をキャッチして自作ターミナルに表示
             process.output.pipeTo(new WritableStream({
               write(data) {
                 log(data);
               }
             }));
 
-            // コマンドの終了を待つ
-            const code = await process.exit;
+            await process.exit;
             renderPrompt();
           } catch (err) {
             log(`コマンド実行エラー: ${err.message}`);
@@ -194,7 +145,10 @@
         // --- 6. ボタンUIのイベント登録 ---
         // 📁 保存ボタン
         document.getElementById('save-btn').addEventListener('click', async () => {
-          if (!webcontainerInstance || !editor) return;
+          if (!webcontainerInstance || !editor) {
+            log('エラー: まだNode.js環境が立ち上がっていません。');
+            return;
+          }
           const code = editor.getValue();
           await webcontainerInstance.fs.writeFile('/index.js', code);
           log('[IDEシステム] index.js を仮想ディスクに保存しました。', 'cyan');
@@ -206,7 +160,6 @@
           await executeCommand('node index.js');
         });
 
-        // 画面のどこをクリックしてもターミナルの入力欄にフォーカスが戻る親切設計
         container.addEventListener('click', () => {
           const activeInput = document.querySelector('.input-area:not([disabled])');
           if (activeInput) activeInput.focus();
@@ -215,5 +168,3 @@
       }, 200);
     });
   </script>
-</body>
-</html>
