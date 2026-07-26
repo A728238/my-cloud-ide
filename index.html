@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
   
-  <!-- GitHub Pages用のセキュリティ対策（最優先） -->
+  <!-- Service Worker強制解除用スクリプト -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- ローカルのスタイルシート（CSSはCDNからでも安全です） -->
-  <link rel="stylesheet" href="./libs/xterm.css" />
+  <!-- CSS関係 -->
+  <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
 
@@ -20,30 +20,21 @@
     .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
     .terminal-container { flex: 1; padding: 10px; background: #000; }
     .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
-    button { background: #007acc; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; }
-    button:hover { background: #0062a3; }
   </style>
 
-  <!-- グローバル変数形式のスクリプトを安全に順番通りロード -->
-  <script src="./libs/codemirror.js"></script>
-  <script src="./libs/codemirror-js.js"></script>
-  <script src="./libs/webcontainer.js"></script>
-
-  <!-- Import Map（xterm関係のモジュール解決用） -->
-  <script type="importmap">
-    {
-      "imports": {
-        "xterm": "./libs/xterm.js",
-        "xterm-addon-fit": "./libs/xterm-addon-fit.js"
-      }
-    }
-  </script>
+  <!-- 1本で自己完結する、エラーの起きない通常JSライブラリ群 -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  
+  <!-- WebContainer API（独立動作版） -->
+  <script src="https://cloudflare.com"></script>
 </head>
 <body>
   <div id="app">
     <div class="header">
       <span>自作 Web IDE v1.0</span>
-      <button id="save-btn">ファイルを保存 (index.js)</button>
     </div>
     <div class="main-container">
       <div class="editor-container">
@@ -53,7 +44,7 @@
     </div>
   </div>
   
-  <!-- キャッシュ対策のため、ファイルを main.js から app.js に変更 -->
-  <script type="module" src="./app.js?v=1"></script>
+  <!-- 完全に名前を新しくしたスクリプトでキャッシュを強制突破 -->
+  <script src="./final-ide.js?cache=destroy"></script>
 </body>
 </html>
