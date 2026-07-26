@@ -7,7 +7,7 @@
   <!-- 最優先でセキュリティの鍵（Service Worker）をロード -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- cdnjs から安定したCSSをロード -->
+  <!-- 安定した cdnjs (Cloudflare) からCSSをロード -->
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
@@ -45,24 +45,18 @@
     .input-area { display: inline; background: transparent; color: #fff; border: none; outline: none; font-family: inherit; font-size: inherit; width: 80%; }
   </style>
 
-  <!-- 【超重要】WebContainerはESM(モジュール)専用の大手CDN（unpkgの実体ファイル）に修正 -->
-  <!-- エディタ本体やxtermもすべて同じ信頼できるモジュール形式URLで統一します -->
-  <script type="importmap">
-    {
-      "imports": {
-        "@webcontainer/api": "https://unpkg.com",
-        "xterm": "https://unpkg.com",
-        "xterm-addon-fit": "https://unpkg.com",
-        "codemirror": "https://unpkg.com"
-      }
-    }
-  </script>
+  <!-- ネットワーク制限を受けない最高に安定した通常スクリプト形式 -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  
+  <!-- 【超重要】外部ドメインを使わず、自分のリポジトリ（ローカル）に置いた実体ファイルを直読み -->
+  <script src="./libs/webcontainer.js"></script>
 </head>
 <body>
 
   <div id="app">
     <div class="header">
-      <span>自作 Web IDE Pro v1.2</span>
+      <span>自作 Web IDE Pro v1.3</span>
       <button id="save-btn">📁 ファイル保存</button>
       <button id="run-btn">▶ 実行 (node index.js)</button>
     </div>
@@ -74,12 +68,13 @@
     </div>
   </div>
 
-  <script type="module">
-    import { WebContainer } from '@webcontainer/api';
-    import CodeMirror from 'codemirror';
-
+  <!-- type="module" や Import Map を廃止し、グローバルから安全に引き出します -->
+  <script>
     window.addEventListener('load', () => {
       setTimeout(async () => {
+        const CodeMirror = window.CodeMirror;
+        // ステップ1で配置したローカルのファイルからWebContainerオブジェクトが安全にロードされます
+        const WebContainer = window.WebContainer;
         const container = document.getElementById('terminal-container');
         if (!container) return;
         
@@ -149,7 +144,7 @@
         // --- 4. WebContainer 安全待機＆起動システム ---
         async function bootSystem() {
           if (!WebContainer) {
-            log('WebContainer コアの読み込みに失敗しています。');
+            log('WebContainer コアの読み込みに失敗しています。ファイルの配置（libs/webcontainer.js）を確認してください。');
             return;
           }
 
@@ -167,7 +162,7 @@
             return;
           }
 
-          log('WebContainer コア: 安全性を確認。ブート中...');
+          log('WebContainer コア: ローカル検証に成功。ブート中...');
           try {
             webcontainerInstance = await WebContainer.boot();
             log('【システムOK】ブラウザ内Node.js環境が立ち上がりました！', 'cyan');
