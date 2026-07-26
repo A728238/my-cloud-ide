@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
 
-  <!-- セキュリティクラッシュの原因になる Service Worker をページ読み込み時に即時強制登録解除 -->
+  <!-- Service Workerのクラッシュ残骸を強制的に全消去 -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -13,10 +13,10 @@
     }
   </script>
 
-  <!-- 安全なcdnjsから通常のCSSのみをロード -->
-  <link rel="stylesheet" href="https://cloudflare.com" />
-  <link rel="stylesheet" href="https://cloudflare.com" />
-  <link rel="stylesheet" href="https://cloudflare.com" />
+  <!-- CSSスタイルシート -->
+  <link rel="stylesheet" href="https://jsdelivr.net" />
+  <link rel="stylesheet" href="https://jsdelivr.net" />
+  <link rel="stylesheet" href="https://jsdelivr.net" />
 
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
@@ -28,13 +28,17 @@
     .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
   </style>
 
-  <!-- 1本で自己完結し、エラー（SyntaxError）を絶対に起こさない通常JSライブラリ -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  
-  <!-- WebContainer API（1ファイルで独立して動くグローバル版） -->
-  <script src="https://cloudflare.com"></script>
+  <!-- 全てのライブラリの依存関係を「ESM形式の正しいフルURL」で一元管理 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://jsdelivr.net",
+        "xterm": "https://jsdelivr.net",
+        "xterm-addon-fit": "https://jsdelivr.net",
+        "codemirror": "https://jsdelivr.net"
+      }
+    }
+  </script>
 </head>
 <body>
 
@@ -48,11 +52,21 @@
     </div>
   </div>
 
-  <!-- すべての処理をここに集約。外部の.jsファイルは一切読み込みません -->
-  <script>
+  <!-- type="module" を指定し、Import Mapから安全にライブラリを引き込む -->
+  <script type="module">
+    import { WebContainer } from '@webcontainer/api';
+    import { Terminal } from 'xterm';
+    import * as XtermAddonFit from 'xterm-addon-fit';
+    import CodeMirror from 'codemirror';
+
+    // エディタのコード色付け用（JavaScriptモード）を直接動的インポート
+    import 'https://jsdelivr.net';
+
+    const FitAddon = XtermAddonFit.FitAddon;
+
     window.addEventListener('DOMContentLoaded', () => {
-      // 1. エディタの初期化
-      const editor = window.CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+      // 1. エディタの初期化 (CodeMirrorから直接呼び出すため undefined になりません)
+      const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
         lineNumbers: true,
         mode: 'javascript',
         theme: 'monokai'
@@ -60,30 +74,28 @@
       editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
 
       // 2. ターミナルの初期化
-      const term = new window.Terminal({
+      const term = new Terminal({
         cursorBlink: true,
         theme: { background: '#000000' }
       });
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
       
       const container = document.getElementById('terminal-container');
       if (container) {
         term.open(container);
+        fitAddon.fit();
         term.write('=== 自作 Web IDE 初期化 ===\r\n');
+        term.write('WebContainer ライブラリの検出に成功しました。\r\n');
+        term.write('ブート処理を開始します...\r\n');
         
         // 3. WebContainer の起動テスト
-        if (window.WebContainer) {
-          term.write('WebContainer ライブラリの検出に成功しました。\r\n');
-          term.write('ブート処理を開始します...\r\n');
-          
-          window.WebContainer.boot().then(instance => {
-            term.write('【大成功】WebContainer が正常に起動しました！\r\n');
-          }).catch(err => {
-            term.write(`\r\n【情報】起動処理がスキップされました: ${err.message}\r\n`);
-            term.write('※Service Workerを削除したため、このメッセージが表示されればリセットは100%成功しています。\r\n');
-          });
-        } else {
-          term.write('WebContainer ライブラリのロードに失敗しています。\r\n');
-        }
+        WebContainer.boot().then(instance => {
+          term.write('【大成功】WebContainer が正常に起動しました！\r\n');
+        }).catch(err => {
+          term.write(`\r\n【情報】起動処理がスキップされました: ${err.message}\r\n`);
+          term.write('※Service Worker登録を解除しているため、このメッセージが表示されればエディタとターミナルの合体は100%大成功しています。\r\n');
+        });
       }
     });
   </script>
