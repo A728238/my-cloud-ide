@@ -16,9 +16,18 @@
     #terminal-container { flex: 1; padding: 10px; background: #000; }
   </style>
 
-  <!-- 依存ライブラリをUMD形式（自己完結型）で読み込み -->
+  <!-- xterm関係は自己完結しているローカル版を読み込み -->
   <script src="./libs/xterm.js"></script>
   <script src="./libs/xterm-addon-fit.js"></script>
+
+  <!-- ブラウザに「@webcontainer/api」の正しい取得先を教える（これが正解のURLです） -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://jsdelivr.net"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -28,12 +37,7 @@
     <div id="terminal-container"></div>
   </div>
   
-  <!-- WebContainer APIのみ、安全な別名CDN（unpkg）から直接モジュールインポート -->
-  <script type="module">
-    import { WebContainer } from 'https://unpkg.com';
-    window.WebContainer = WebContainer;
-  </script>
-
-  <script type="module" src="./main.js"></script>
+  <!-- キャッシュを強制クリアするために ?v=4 に更新 -->
+  <script type="module" src="./main.js?v=4"></script>
 </body>
 </html>
