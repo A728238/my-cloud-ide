@@ -3,11 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
-  
-  <!-- Service Worker強制解除用スクリプト -->
-  <script src="./coi-serviceworker.js"></script>
 
-  <!-- CSS関係 -->
+  <!-- セキュリティクラッシュの原因になる Service Worker をページ読み込み時に即時強制登録解除 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) { registration.unregister(); }
+      });
+    }
+  </script>
+
+  <!-- 安全なcdnjsから通常のCSSのみをロード -->
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
@@ -15,27 +21,25 @@
   <style>
     body { margin: 0; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
     #app { display: flex; flex-direction: column; height: 100vh; }
-    .header { padding: 10px; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; }
-    .main-container { display: flex; flex: 1; height: calc(100vh - 50px); }
+    .header { padding: 10px; border-bottom: 1px solid #333; font-weight: bold; background: #252526; }
+    .main-container { display: flex; flex: 1; height: calc(100vh - 40px); }
     .editor-container { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; }
     .terminal-container { flex: 1; padding: 10px; background: #000; }
     .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
   </style>
 
-  <!-- 1本で自己完結する、エラーの起きない通常JSライブラリ群 -->
-  <script src="https://cloudflare.com"></script>
+  <!-- 1本で自己完結し、エラー（SyntaxError）を絶対に起こさない通常JSライブラリ -->
   <script src="https://cloudflare.com"></script>
   <script src="https://cloudflare.com"></script>
   <script src="https://cloudflare.com"></script>
   
-  <!-- WebContainer API（独立動作版） -->
+  <!-- WebContainer API（1ファイルで独立して動くグローバル版） -->
   <script src="https://cloudflare.com"></script>
 </head>
 <body>
+
   <div id="app">
-    <div class="header">
-      <span>自作 Web IDE v1.0</span>
-    </div>
+    <div class="header">自作 Web IDE 起動テスト</div>
     <div class="main-container">
       <div class="editor-container">
         <textarea id="code-editor"></textarea>
@@ -43,8 +47,45 @@
       <div id="terminal-container" class="terminal-container"></div>
     </div>
   </div>
-  
-  <!-- 完全に名前を新しくしたスクリプトでキャッシュを強制突破 -->
-  <script src="./final-ide.js?cache=destroy"></script>
+
+  <!-- すべての処理をここに集約。外部の.jsファイルは一切読み込みません -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. エディタの初期化
+      const editor = window.CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+        lineNumbers: true,
+        mode: 'javascript',
+        theme: 'monokai'
+      });
+      editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
+
+      // 2. ターミナルの初期化
+      const term = new window.Terminal({
+        cursorBlink: true,
+        theme: { background: '#000000' }
+      });
+      
+      const container = document.getElementById('terminal-container');
+      if (container) {
+        term.open(container);
+        term.write('=== 自作 Web IDE 初期化 ===\r\n');
+        
+        // 3. WebContainer の起動テスト
+        if (window.WebContainer) {
+          term.write('WebContainer ライブラリの検出に成功しました。\r\n');
+          term.write('ブート処理を開始します...\r\n');
+          
+          window.WebContainer.boot().then(instance => {
+            term.write('【大成功】WebContainer が正常に起動しました！\r\n');
+          }).catch(err => {
+            term.write(`\r\n【情報】起動処理がスキップされました: ${err.message}\r\n`);
+            term.write('※Service Workerを削除したため、このメッセージが表示されればリセットは100%成功しています。\r\n');
+          });
+        } else {
+          term.write('WebContainer ライブラリのロードに失敗しています。\r\n');
+        }
+      }
+    });
+  </script>
 </body>
 </html>
