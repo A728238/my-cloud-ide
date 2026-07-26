@@ -7,7 +7,7 @@
   <!-- GitHub Pages用のセキュリティ対策（最優先） -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- ローカルのCSSファイルを読み込み（CDN依存の排除） -->
+  <!-- ローカルのCSSファイルを読み込み -->
   <link rel="stylesheet" href="./libs/xterm.css" />
   
   <style>
@@ -15,17 +15,10 @@
     #app { display: flex; flex-direction: column; height: 100vh; }
     #terminal-container { flex: 1; padding: 10px; background: #000; }
   </style>
-  
-  <!-- Import Mapの定義（URLを完全なフルURI形式に統一） -->
-  <script type="importmap">
-    {
-      "imports": {
-        "@webcontainer/api": "https://jsdelivr.net",
-        "xterm": "./libs/xterm.js",
-        "xterm-addon-fit": "./libs/xterm-addon-fit.js"
-      }
-    }
-  </script>
+
+  <!-- 依存ライブラリをUMD形式（自己完結型）で読み込み -->
+  <script src="./libs/xterm.js"></script>
+  <script src="./libs/xterm-addon-fit.js"></script>
 </head>
 <body>
   <div id="app">
@@ -34,6 +27,13 @@
     </div>
     <div id="terminal-container"></div>
   </div>
+  
+  <!-- WebContainer APIのみ、安全な別名CDN（unpkg）から直接モジュールインポート -->
+  <script type="module">
+    import { WebContainer } from 'https://unpkg.com';
+    window.WebContainer = WebContainer;
+  </script>
+
   <script type="module" src="./main.js"></script>
 </body>
 </html>
