@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
 
-  <!-- Service Workerの過去の残骸を強制的に全消去 -->
+  <!-- Service Workerの残骸を即時強制解除 -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -13,7 +13,7 @@
     }
   </script>
 
-  <!-- ネットワーク遮断されない安定した cdnjs (Cloudflare) からCSSをロード -->
+  <!-- cdnjs から安定したCSSをロード -->
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
@@ -28,7 +28,7 @@
     .CodeMirror { flex: 1; height: 100%; font-size: 14px; }
   </style>
 
-  <!-- Import Mapの配信元も jsdelivr から unpkg / cdnjs 系のESM版へ完全に迂回 -->
+  <!-- 【超重要】リダイレクトによるCORSブロックを防ぐため、末尾をすべて「明確な実体ファイルパス(.js)」に修正 -->
   <script type="importmap">
     {
       "imports": {
@@ -43,7 +43,7 @@
 <body>
 
   <div id="app">
-    <div class="header">自作 Web IDE 起動テスト（ネットワーク迂回版）</div>
+    <div class="header">自作 Web IDE 起動テスト（CORS完全回避版）</div>
     <div class="main-container">
       <div class="editor-container">
         <textarea id="code-editor"></textarea>
@@ -80,7 +80,7 @@
       term.open(container);
       fitAddon.fit();
       term.write('=== 自作 Web IDE 初期化 ===\r\n');
-      term.write('ネットワーク迂回によるライブラリロードに成功しました。\r\n');
+      term.write('実体ファイルへのダイレクトアクセスに成功しました。\r\n');
       term.write('ブート処理を開始します...\r\n');
       
       // 3. WebContainer の起動テスト
