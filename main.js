@@ -1,6 +1,10 @@
 import { WebContainer } from '@webcontainer/api';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
+import CodeMirror from 'codemirror';
+
+// CodeMirror のJavaScriptシンタックスハイライト（色付け）機能を動的にインポート
+import 'https://jsdelivr.net';
 
 let webcontainerInstance;
 let editor;
@@ -13,7 +17,7 @@ const term = new Terminal({
 const fitAddon = new FitAddon();
 term.loadAddon(fitAddon);
 
-// 2. CodeMirrorエディタの初期化
+// 2. エディタの初期化
 function initEditor() {
   editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
     lineNumbers: true,
@@ -23,7 +27,7 @@ function initEditor() {
   });
 }
 
-// 3. WebContainerの初期化
+// 3. WebContainerの起動
 async function initWebContainer() {
   try {
     const container = document.getElementById('terminal-container');
@@ -38,7 +42,7 @@ async function initWebContainer() {
     webcontainerInstance = await WebContainer.boot();
     term.write('WebContainer が正常に起動しました。\r\n\r\n');
 
-    // 初期状態の仮想ファイルをマウント
+    // 初期ファイルの書き込み
     await webcontainerInstance.mount({
       'index.js': {
         file: {
@@ -52,7 +56,7 @@ async function initWebContainer() {
       terminal: { cols: term.cols, rows: term.rows },
     });
 
-    // 入出力の同期
+    // 入出力をターミナルに結合
     shellProcess.output.pipeTo(
       new WritableStream({
         write(data) { term.write(data); },
@@ -62,10 +66,9 @@ async function initWebContainer() {
     const input = shellProcess.input.getWriter();
     term.onData((data) => { input.write(data); });
 
-    // 保存ボタンのイベント登録
+    // 保存ボタンのイベント
     document.getElementById('save-btn').addEventListener('click', async () => {
       const code = editor.getValue();
-      // エディタの内容をWebContainer内の「index.js」に書き込み
       await webcontainerInstance.fs.writeFile('/index.js', code);
       term.write('\r\n[IDE] index.js を保存しました。\r\n❯ ');
     });
@@ -76,6 +79,7 @@ async function initWebContainer() {
     });
   } catch (error) {
     term.write(`\r\n【起動エラー】: ${error.message}\r\n`);
+    console.error(error);
   }
 }
 
