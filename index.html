@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>自作 Web IDE</title>
-  <!-- セキュリティ対策（必須） -->
+  
+  <!-- GitHub Pages用のセキュリティ対策（最優先） -->
   <script src="./coi-serviceworker.js"></script>
 
-  <!-- スタイルシートの読み込み（CSSはCORSの影響を受けにくいためCDNから直接取得） -->
-  <link rel="stylesheet" href="https://cloudflare.com" />
+  <!-- ローカルのスタイルシート（CSSはCDNからでも安全です） -->
+  <link rel="stylesheet" href="./libs/xterm.css" />
   <link rel="stylesheet" href="https://cloudflare.com" />
   <link rel="stylesheet" href="https://cloudflare.com" />
 
@@ -23,14 +24,17 @@
     button:hover { background: #0062a3; }
   </style>
 
-  <!-- 【重要】すべてのJavascript依存関係を正しいESM形式のURLで一元管理（ローカルファイルは使いません） -->
+  <!-- グローバル変数形式のスクリプトを安全に順番通りロード -->
+  <script src="./libs/codemirror.js"></script>
+  <script src="./libs/codemirror-js.js"></script>
+  <script src="./libs/webcontainer.js"></script>
+
+  <!-- Import Map（xterm関係のモジュール解決用） -->
   <script type="importmap">
     {
       "imports": {
-        "@webcontainer/api": "https://jsdelivr.net",
-        "xterm": "https://jsdelivr.net",
-        "xterm-addon-fit": "https://jsdelivr.net",
-        "codemirror": "https://jsdelivr.net"
+        "xterm": "./libs/xterm.js",
+        "xterm-addon-fit": "./libs/xterm-addon-fit.js"
       }
     }
   </script>
@@ -49,7 +53,7 @@
     </div>
   </div>
   
-  <!-- バージョンパラメータを完全に新しくしてキャッシュを破壊 -->
-  <script type="module" src="./main.js?v=ide-fix-esm"></script>
+  <!-- キャッシュ対策のため、ファイルを main.js から app.js に変更 -->
+  <script type="module" src="./app.js?v=1"></script>
 </body>
 </html>
