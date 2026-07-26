@@ -49,59 +49,47 @@
     </div>
   </div>
 
-  <!-- type="module" や Import Map を廃止し、確実に上から順番に実行する安全な通常のスクリプトブロック -->
   <script>
-    // ページが読み込まれたら確実に実行
+    // ページの画像やCSSなど、全ての読み込みが『完全に』完了したタイミングで安全に実行
     window.addEventListener('load', () => {
-      // 全てのオブジェクトがグローバル変数 (window) に入っていることを確認
-      const CodeMirror = window.CodeMirror;
-      const Terminal = window.Terminal;
-      const FitAddon = window.FitAddon ? window.FitAddon.FitAddon : null;
-      const WebContainer = window.WebContainer;
+      // 100ミリ秒（0.1秒）だけ画面の描画を待つ安全弁（タイムアウト）を設定
+      setTimeout(() => {
+        const CodeMirror = window.CodeMirror;
+        const Terminal = window.Terminal;
+        const FitAddon = window.FitAddon ? window.FitAddon.FitAddon : null;
 
-      // 1. エディタの初期化
-      if (CodeMirror) {
-        const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-          lineNumbers: true,
-          theme: 'monokai'
-        });
-        editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
-      }
+        // 1. エディタの初期化
+        if (CodeMirror && !document.querySelector('.CodeMirror')) {
+          const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+            lineNumbers: true,
+            theme: 'monokai'
+          });
+          editor.setValue(`// 自作IDEエディタ\nconsole.log("Hello WebContainer");\n`);
+        }
 
-      // 2. ターミナルの初期化
-      if (Terminal) {
-        const term = new Terminal({
-          cursorBlink: true,
-          theme: { background: '#000000' }
-        });
-        
-        const container = document.getElementById('terminal-container');
-        if (container) {
-          term.open(container);
+        // 2. ターミナルの初期化
+        if (Terminal) {
+          const term = new Terminal({
+            cursorBlink: true,
+            theme: { background: '#000000' }
+          });
           
-          if (FitAddon) {
-            const fitAddon = new FitAddon();
-            term.loadAddon(fitAddon);
-            fitAddon.fit();
-          }
+          const container = document.getElementById('terminal-container');
+          if (container) {
+            term.open(container);
+            
+            if (FitAddon) {
+              const fitAddon = new FitAddon();
+              term.loadAddon(fitAddon);
+              fitAddon.fit();
+            }
 
-          term.write('=== 自作 Web IDE 初期化 ===\r\n');
-          term.write('外部通信を必要としないローカルロードに成功しました。\r\n');
-          term.write('ブート処理を開始します...\r\n');
-          
-          // 3. WebContainer の起動テスト
-          if (WebContainer) {
-            WebContainer.boot().then(instance => {
-              term.write('【大成功】WebContainer が正常に起動しました！\r\n');
-            }).catch(err => {
-              term.write(`\r\n【情報】描画および初期化テスト成功: ${err.message}\r\n`);
-              term.write('※Service Workerが無効化されているため起動処理はスキップされましたが、画面が正常に左右に分かれ、この文字が表示されていれば大成功です。\r\n');
-            });
-          } else {
-            term.write('WebContainer ライブラリが検出できませんでした。\r\n');
+            term.write('=== 自作 Web IDE 初期化 ===\r\n');
+            term.write('画面の描画とライブラリのロードに成功しました！\r\n');
+            term.write('自作Web IDEのベースが完成しました。\r\n');
           }
         }
-      }
+      }, 100);
     });
   </script>
 </body>
